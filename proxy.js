@@ -16,7 +16,8 @@ const opts = {
 }
 
 http.createServer((req, res) => {
-  console.log(req.url, req.method, req.headers);
+  console.log('HTTP proxy happening for: ', req.url);
+  //console.log(req.url, req.method, req.headers);
   var r = request({
     url: req.url,
     method: req.method,
@@ -28,9 +29,6 @@ http.createServer((req, res) => {
 })
 .on('connect', (req, cltSocket, head) => {
   console.log('Connect fired');
-  console.log(req.url);
-  console.log(req.method);
-  console.log(req.headers);
 
   var proto, netLib;
   if(req.url.indexOf('443') > -1) {
@@ -42,7 +40,7 @@ http.createServer((req, res) => {
   }
 
   const connectionCb = () => {
-    console.log('target connection to: ', targetUrl.port, targetUrl.hostname);
+    console.log('Connection established.');
     cltSocket.write([
       'HTTP/1.1 200 Connection Established\r\n', 
       'Proxy-agent: Node.js-Proxy\r\n',
@@ -55,10 +53,27 @@ http.createServer((req, res) => {
   } 
 
   var targetUrl = url.parse(util.format('%s://%s', proto, req.url));
+
   var targetConnection; 
   if(proto == 'http') {
     targetConnection = netLib.connect(targetUrl.port, targetUrl.hostname, connectionCb)
   } else {
-    targetConnection = netLib.connect(opts, targetUrl.port, targetUrl.hostname, connectionCb)
+    if(targetUrl.hostname == 'localhost') {
+      console.log('Connecting to localhost over TLS.');
+      try {
+        targetConnection = netLib.connect(opts, targetUrl.port, targetUrl.hostname, connectionCb);
+      } catch(e) {
+        console.log('Error connecting.');
+        console.log(e);
+      }
+    } else {
+      console.log('Connecting to '+ targetUrl.hostname + ' over TLS.');
+      try {
+        targetConnection = netLib.connect(targetUrl.port, targetUrl.hostname, connectionCb);
+      } catch(e) {
+        console.log('Error connecting.');
+        console.log(e);
+      }
+    }
   }
-}).listen(9000);
+}).listen(9000, '0.0.0.0');
