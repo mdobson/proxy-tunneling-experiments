@@ -1,10 +1,22 @@
 const req = require('request');
 const fs = require('fs');
+const opts = {
+  key: fs.readFileSync('./server.key.pem'),
+  cert: fs.readFileSync('./server.cert.pem'),
+  ca: fs.readFileSync('./ca-chain.cert.pem'),
+  passphrase: 'foobar'
+}
 
-req({
+var r = req({
+  key: opts.key,
+  cert: opts.cert,
+  ca: opts.ca,
+  passphrase: opts.passphrase,
+  rejectUnauthorized: false,
   proxy:'http://localhost:9000',
+  tunnel: true,
   method:'POST',
-  url:'https://mocktarget.apigee.net/',
+  url:'http://localhost:8080/',
   headers: {
     'X-Proxy-Server': 'http://localhost:9000'
   },
@@ -19,3 +31,4 @@ req({
   console.log(res.headers);
   console.log(body);
 })
+

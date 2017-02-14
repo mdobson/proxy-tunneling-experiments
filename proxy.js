@@ -11,7 +11,8 @@ const opts = {
   key: fs.readFileSync('./server.key.pem'),
   cert: fs.readFileSync('./server.cert.pem'),
   ca: fs.readFileSync('./ca-chain.cert.pem'),
-  passphrase: 'foobar'
+  passphrase: 'foobar',
+  rejectUnauthorized: false
 }
 
 http.createServer((req, res) => {
@@ -26,6 +27,7 @@ http.createServer((req, res) => {
 
 })
 .on('connect', (req, cltSocket, head) => {
+  console.log('Connect fired');
   console.log(req.url);
   console.log(req.method);
   console.log(req.headers);
@@ -39,10 +41,7 @@ http.createServer((req, res) => {
     netLib = net;
   }
 
-  
-
-  var targetUrl = url.parse(util.format('%s://%s', proto, req.url));
-  var targetConnection = net.connect(targetUrl.port, targetUrl.hostname, () => {
+  const connectionCb = () => {
     console.log('target connection to: ', targetUrl.port, targetUrl.hostname);
     cltSocket.write([
       'HTTP/1.1 200 Connection Established\r\n', 
@@ -53,6 +52,13 @@ http.createServer((req, res) => {
     targetConnection.write(head);
     targetConnection.pipe(cltSocket);
     cltSocket.pipe(targetConnection);
-  })
-})
-.listen(9000);
+  } 
+
+  var targetUrl = url.parse(util.format('%s://%s', proto, req.url));
+  var targetConnection; 
+  if(proto == 'http') {
+    targetConnection = netLib.connect(targetUrl.port, targetUrl.hostname, connectionCb)
+  } else {
+    targetConnection = netLib.connect(opts, targetUrl.port, targetUrl.hostname, connectionCb)
+  }
+}).listen(9000);
